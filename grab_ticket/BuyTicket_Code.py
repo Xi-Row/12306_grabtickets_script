@@ -1,20 +1,16 @@
-import os
-import sys
 import time
+from time import sleep
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as excon
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.select import Select
 from config.setting import (FROM_STATION, TO_STATION,
                                                           TRAIN_DATE, PASSENGER_NAME,
                                                           IS_STUDENT, SEAT_POSITION,
                                                           SEAT_TYPE, TRAIN_ORDER,
-                                                          EXECUTABLE_PATH, PAY_TIME_LEFT)
-
-
-
+                                                          PAY_TIME_LEFT)
 class TicketBuyer:
     #Url
     login_url = 'https://kyfw.12306.cn/otn/resources/login.html'
@@ -32,14 +28,13 @@ class TicketBuyer:
     #Options
     options = Options()
     # options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
-    options.add_experimental_option("detach", True)
+    # options.add_experimental_option("detach", True)
     # options.add_argument('--headless')
-    service = Service(EXECUTABLE_PATH)
     options.add_argument("--disable-extensions")
     options.add_argument("--start-maximized")
 
     #browser driver
-    driver = webdriver.Chrome(service=service,options=options)
+    driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 8)
 
 
@@ -51,6 +46,7 @@ class TicketBuyer:
         WebDriverWait(self.driver,120).until(
             excon.url_to_be(self.profile_url)
         )
+        self.driver.get(self.left_ticket_url)
         print("log in Successfully")
         #logging...
 
@@ -65,7 +61,6 @@ class TicketBuyer:
 
     #query and choose ticket
     def query_choose_ticket(self):
-        self.driver.get(self.left_ticket_url)
         from_to_station = self.driver.find_element(By.ID, 'fromStation')
         to_station = self.driver.find_element(By.ID, 'toStation')
         train_date = self.driver.find_element(By.ID, 'train_date')
@@ -81,7 +76,7 @@ class TicketBuyer:
             if times >= 20:
                 break
             try:
-                WebDriverWait(self.driver,0.6).until(
+                WebDriverWait(self.driver,0.5).until(
                     excon.element_to_be_clickable((By.XPATH, '//*[@id="query_ticket"]'))
                 ).click()
                 self.wait.until(
@@ -95,7 +90,6 @@ class TicketBuyer:
 
             except:
                 #logging...
-                time.sleep(1)
                 continue
 
     #choose type of seat(optional)
@@ -136,7 +130,7 @@ class TicketBuyer:
                 idx += 1
                 passenger.click()
                 try:
-                        WebDriverWait(self.driver, 0.7).until(
+                        WebDriverWait(self.driver, 0.2).until(
                             excon.presence_of_element_located((By.XPATH, '//div[@class="lay-btn"]'))
                         )
                         is_student_options = self.driver.find_elements(By.XPATH,
@@ -157,15 +151,23 @@ class TicketBuyer:
 
         self.choose_seat_position(SEAT_TYPE[0], SEAT_POSITION)
 
-        final_confirm = self.driver.find_element(By.XPATH,
-                                             '//div[@id="confirmDiv"]/a[@id="qr_submit_id"]')
-        time.sleep(1)
-        final_confirm.click()
+        stfm = time.time()
+        while True:
+            if  time.time() - stfm >= 10:
+                break
+            try:
+                final_confirm = self.driver.find_element(By.XPATH, '//a[@id="qr_submit_id"]')
+                final_confirm.click()
+            except:
+                pass
+        print('break successfully!!')
         if PAY_TIME_LEFT:
-            time.sleep(300)
+            time.sleep(600)
 
     def start_buy(self):
         try:
+            self.set_cookies()
+
             self.query_choose_ticket()
 
             self.confirm_passenger()
@@ -174,14 +176,12 @@ class TicketBuyer:
         except:
             return False
 
-        finally:
-            self.driver.close()
-
-
 
 
 if __name__ == '__main__':
     ticket_buyer = TicketBuyer()
     ticket_buyer.login()
+    st = time.time()
     ticket_buyer.start_buy()
- 
+    ed = time.time()
+    print(ed - st)

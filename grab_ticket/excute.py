@@ -19,7 +19,7 @@ def execute():
     schedule.add_job(
         Ticket_buyer.start_buy,
         'date',
-        run_date=datetime.now(),
+        run_date=BUY_DATE,
     )
     schedule.start()
 
